@@ -1,0 +1,44 @@
+[project]
+name = "dq-gate"
+version = "0.1.0"
+description = "A data-quality gate: dedupe, validate-before-keep, cross-reference integrity, and a small read API."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi==0.115.12",
+    "sqlalchemy==2.0.40",
+    "alembic==1.15.2",
+    "psycopg[binary]==3.2.6",
+    "uvicorn==0.34.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.5",
+    "ruff==0.11.8",
+    "httpx==0.28.1",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+filterwarnings = [
+    # Raised inside starlette's TestClient by a newer anyio; nothing in this project uses it.
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]

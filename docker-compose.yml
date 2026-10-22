@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: dq
+      POSTGRES_PASSWORD: dq
+      POSTGRES_DB: dq_gate
+    ports:
+      # 5433 on the host so it does not collide with a local Postgres on 5432.
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dq -d dq_gate"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - dq_gate_pg:/var/lib/postgresql/data
+
+volumes:
+  dq_gate_pg:

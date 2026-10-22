@@ -1,0 +1,47 @@
+name: Nightly integrity
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # 03:17 UTC every night
+  workflow_dispatch:
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dq
+          POSTGRES_PASSWORD: dq
+          POSTGRES_DB: dq_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dq -d dq_gate"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgresql+psycopg://dq:dq@localhost:5432/dq_gate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      - name: Apply migrations
+        run: alembic upgrade head
+      - name: Generate sample data
+        run: python -m scripts.make_sample_data --seed 42 --out data/
+      - name: Ingest the clean sample
+        run: |
+          set -euo pipefail
+          for rel in clean/organizations.csv clean/events.json; do
+            expected=$(jq -r --arg f "$rel" '.files[$f].expected_count' data/manifest.json)
+            source=$(jq -r --arg f "$rel" '.files[$f].source' data/manifest.json)
+            python -m app.ingest "data/$rel" --source "$source" --expected-count "$expected"
+          done
+      - name: Integrity check
+        run: python -m app.integrity

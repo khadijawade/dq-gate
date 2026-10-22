@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dq
+          POSTGRES_PASSWORD: dq
+          POSTGRES_DB: dq_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dq -d dq_gate"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgresql+psycopg://dq:dq@localhost:5432/dq_gate
+      TEST_DATABASE_URL: postgresql+psycopg://dq:dq@localhost:5432/dq_gate_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Test
+        run: pytest -v

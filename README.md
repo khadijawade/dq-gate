@@ -48,6 +48,15 @@ enforcement instead: it lists events whose `org_ref` matches no organization, ex
 are any, and runs nightly in CI. A reference to an archived organization still counts as
 resolved, since that organization exists.
 
+**No second index for the integrity check.** The check matches archived organizations too, so
+the live-only unique index cannot serve it, and a plain index on `fingerprint` looks like an
+obvious addition. Measured, it changes nothing: Postgres answers "every event with no matching
+organization" with one parallel hash anti-join that reads both tables once, and picks the same
+plan with or without the index. `python -m scripts.bench_integrity` (500,000 organizations,
+2,000,000 events, median of 5 runs) timed it at 244.4 ms with only the partial index and 244.0 ms
+with a plain one added. A plain index would only pay off for single-fingerprint lookups, which
+nothing here does, so it is not worth its cost on every insert.
+
 **Cursor pagination.** `GET /organizations` and `GET /events` order by `(created_at, id)`, which
 is unique and never changes for a stored row, and fetch the next page with a row-value comparison
 `(created_at, id) > (:c, :i)`. Unlike `OFFSET`, this stays fast on deep pages and does not skip or

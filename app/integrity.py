@@ -20,7 +20,7 @@ from app.db import make_engine
 
 IDS_SHOWN = 20
 
-_ORPHANS = """
+ORPHAN_FILTER = """
     FROM events e
     WHERE NOT EXISTS (SELECT 1 FROM organizations o WHERE o.fingerprint = e.org_ref)
 """
@@ -28,10 +28,10 @@ _ORPHANS = """
 
 def find_orphans(engine: Engine, limit: int = IDS_SHOWN) -> tuple[int, list[uuid.UUID]]:
     with engine.connect() as conn:
-        total = conn.execute(text(f"SELECT count(*) {_ORPHANS}")).scalar_one()
+        total = conn.execute(text(f"SELECT count(*) {ORPHAN_FILTER}")).scalar_one()
         ids = (
             conn.execute(
-                text(f"SELECT e.id {_ORPHANS} ORDER BY e.created_at, e.id LIMIT :limit"),
+                text(f"SELECT e.id {ORPHAN_FILTER} ORDER BY e.created_at, e.id LIMIT :limit"),
                 {"limit": limit},
             )
             .scalars()

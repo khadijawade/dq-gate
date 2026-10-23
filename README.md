@@ -146,24 +146,47 @@ empty database.
 
 ### Test suite
 
-From [CI run 39969204114](https://github.com/khadijawade/dq-gate/actions/runs/39969204114) on
-commit `22d05ca` (Ubuntu, Python 3.12.15, `postgres:16` service container, dependencies installed
-from `requirements-dev.lock`), which runs `ruff check .`, `ruff format --check .` and `pytest -v`:
+From [CI run 39997390505](https://github.com/khadijawade/dq-gate/actions/runs/39997390505) on
+commit `3248ad9` (Ubuntu, Python 3.12.15, `postgres:16` service container, dependencies installed
+from `requirements-dev.lock`), which runs `ruff check .`, `ruff format --check .` and
+`pytest -v --cov`:
 
 ```
 All checks passed!
 22 files already formatted
-============================= 104 passed in 4.60s ==============================
+Name                          Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------
+app/__init__.py                   0      0      0      0   100%
+app/api.py                      148      1     14      1    99%   141
+app/db.py                         7      0      0      0   100%
+app/fingerprint.py               33      0      8      0   100%
+app/ingest.py                   135      0     40      0   100%
+app/integrity.py                 27      0      6      0   100%
+app/models.py                    41      0      0      0   100%
+app/validation.py                24      0      4      0   100%
+scripts/__init__.py               0      0      0      0   100%
+scripts/make_sample_data.py     118      0     22      0   100%
+-------------------------------------------------------------------------
+TOTAL                           533      1     94      1    99%
+Required test coverage of 95.0% reached. Total coverage: 99.68%
+============================= 110 passed in 10.94s =============================
 ```
 
 | Test file | Passed |
 |---|---|
-| `tests/test_api.py` | 24 |
+| `tests/test_api.py` | 25 |
 | `tests/test_fingerprint.py` | 34 |
-| `tests/test_ingest.py` | 16 |
+| `tests/test_ingest.py` | 20 |
 | `tests/test_migrations.py` | 2 |
-| `tests/test_sample_data.py` | 8 |
+| `tests/test_sample_data.py` | 9 |
 | `tests/test_validation.py` | 20 |
+
+Coverage counts branches, and includes the CLI tests that run `python -m app.ingest` and
+`python -m app.integrity` as subprocesses (coverage's `patch = ["subprocess"]`). The one line not
+covered, `app/api.py:141`, closes the API's own connection pool at shutdown; the tests pass the
+app their own engine instead. `scripts/bench_integrity.py` is a manual benchmark and is left out.
+CI fails if coverage drops below 95%. In the same run the `docker` job built the image, started it
+with a fresh database and passed `scripts/smoke_api.sh`.
 
 The CI badge at the top shows the latest run, which may be newer than this one.
 

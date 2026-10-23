@@ -42,3 +42,18 @@ jobs:
           ruff format --check .
       - name: Test
         run: pytest -v
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start the API with its database
+        run: docker compose --profile app up -d --build --wait
+      - name: Smoke test
+        run: scripts/smoke_api.sh http://localhost:8000
+      - name: Logs on failure
+        if: failure()
+        run: docker compose --profile app logs
+      - name: Stop
+        if: always()
+        run: docker compose --profile app down -v

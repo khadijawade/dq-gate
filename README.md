@@ -86,6 +86,18 @@ uvicorn app.api:app          # http://127.0.0.1:8000/docs
 pytest
 ```
 
+### Running the API in Docker
+
+```bash
+docker compose --profile app up -d --build --wait    # http://127.0.0.1:8000/docs
+```
+
+The `api` service is behind a compose profile, so plain `docker compose up` still starts only
+Postgres for working from a local venv. The image installs from `requirements.lock`, runs as a
+non-root user, applies migrations on start, and reports healthy once `GET /health` answers. Set
+`API_PORT` or `DB_PORT` to move it off host ports 8000 or 5433. The CI `docker` job builds the
+image, starts it with a fresh database and runs `scripts/smoke_api.sh` against it.
+
 Dependencies: `pyproject.toml` names the direct dependencies, each pinned to one version.
 `requirements.lock` and `requirements-dev.lock` pin everything they pull in as well, and CI installs
 only from those, so a new release upstream cannot change a build. To update, edit
@@ -207,9 +219,10 @@ with 50 inserted, 0 skipped as duplicates and 0 invalid, `data/clean/events.json
 ```
 app/           api.py, models.py, ingest.py, fingerprint.py, validation.py, integrity.py, db.py
 migrations/    Alembic; 0001 creates the tables and partial unique index, 0002 adds batch counts
-scripts/       make_sample_data.py, bench_integrity.py
+scripts/       make_sample_data.py, bench_integrity.py, smoke_api.sh
 tests/         run against real Postgres
-.github/       ci.yml (lint and tests on push and pull request), integrity.yml (nightly)
+.github/       ci.yml (lint, tests and a Docker smoke test on push and pull request), integrity.yml (nightly)
+Dockerfile     the API image; docker-compose.yml runs it under the `app` profile
 ```
 
 ## License

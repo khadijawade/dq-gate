@@ -62,7 +62,7 @@ class IngestReport:
 # --- reading -------------------------------------------------------------------------------
 
 
-def _clean(record: Mapping[str, Any]) -> dict[str, str | None]:
+def clean_record(record: Mapping[str, Any]) -> dict[str, str | None]:
     out: dict[str, str | None] = {}
     for key, value in record.items():
         if key is None:
@@ -76,14 +76,14 @@ def read_records(path: Path) -> list[dict[str, str | None]]:
     suffix = path.suffix.lower()
     if suffix == ".csv":
         with path.open(newline="", encoding="utf-8") as fh:
-            return [_clean(row) for row in csv.DictReader(fh)]
+            return [clean_record(row) for row in csv.DictReader(fh)]
     if suffix == ".json":
         data = json.loads(path.read_text(encoding="utf-8"))
         if isinstance(data, dict):
             data = data.get("records", [])
         if not isinstance(data, list) or not all(isinstance(r, dict) for r in data):
             raise ValueError(f"{path}: expected a list of objects")
-        return [_clean(row) for row in data]
+        return [clean_record(row) for row in data]
     raise ValueError(f"{path}: unsupported file type {suffix!r} (use .csv or .json)")
 
 

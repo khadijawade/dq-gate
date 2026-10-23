@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import Engine, select, text, tuple_
 
 from app.db import make_engine
-from app.ingest import _clean, ingest_records
+from app.ingest import clean_record, ingest_records
 from app.models import Batch, Event, Organization
 
 DEFAULT_LIMIT = 50
@@ -181,7 +181,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     def post_batch(body: BatchIn, engine: EngineDep, response: Response) -> IngestOut:
         report = ingest_records(
             engine,
-            [_clean(record) for record in body.records],
+            [clean_record(record) for record in body.records],
             source=body.source,
             expected_count=body.expected_count,
             kind=body.kind,

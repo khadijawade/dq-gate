@@ -131,3 +131,15 @@ def test_archived_organization_still_resolves(db, sample) -> None:
     with db.begin() as conn:
         conn.execute(text("UPDATE organizations SET archived_at = now()"))
     assert find_orphans(db)[0] == 0
+
+
+def test_generator_cli_writes_the_manifest(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "scripts.make_sample_data", "--seed", "42", "--out", str(tmp_path)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "expected_count=238" in result.stdout
+    assert json.loads((tmp_path / "manifest.json").read_text())["seed"] == 42

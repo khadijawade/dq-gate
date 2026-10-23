@@ -201,3 +201,44 @@ def test_cli_reports_counts_and_is_idempotent(db, tmp_path: Path, test_database_
         (0, 21, 1),
     ]
     assert count(db, "organizations") == 20
+
+
+def test_unreadable_files_are_refused(tmp_path: Path) -> None:
+    wrong_type = tmp_path / "orgs.xml"
+    wrong_type.write_text("<orgs/>", encoding="utf-8")
+    with pytest.raises(ValueError, match="unsupported file type"):
+        read_records(wrong_type)
+
+    not_a_list = tmp_path / "orgs.json"
+    not_a_list.write_text(json.dumps({"records": "nope"}), encoding="utf-8")
+    with pytest.raises(ValueError, match="expected a list of objects"):
+        read_records(not_a_list)
+
+
+def test_extra_csv_cells_are_ignored(tmp_path: Path) -> None:
+    path = tmp_path / "orgs.csv"
+    path.write_text("name,country\nKestrel Works,DE,stray,cells\n", encoding="utf-8")
+    assert read_records(path) == [{"name": "Kestrel Works", "country": "DE"}]
+
+
+def test_rows_that_cannot_be_shaped_are_invalid(db) -> None:
+    orgs = [*many_orgs(40), {"name": "...", "country": "GB", "website": None}]
+    assert ingest_records(db, orgs, source="t", expected_count=41).invalid == 1
+
+    events = [{"org_ref": "r", "title": f"t{i}", "starts_on": "2025"} for i in range(40)]
+    events.append({"org_ref": "r", "title": "bad date", "starts_on": "2025-13"})
+    report = ingest_records(db, events, source="t", expected_count=41)
+    assert (report.inserted, report.invalid) == (40, 1)
+
+
+def test_cli_refuses_a_zero_expected_count(tmp_path: Path) -> None:
+    path = tmp_path / "orgs.json"
+    path.write_text(json.dumps(ORGS), encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, "-m", "app.ingest", str(path), "--source", "x", "--expected-count", "0"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2
+    assert "--expected-count must be at least 1" in result.stderr

@@ -2,7 +2,7 @@ import base64
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 
 from app.api import MAX_BATCH_RECORDS, BatchIn, create_app, encode_cursor
 from app.ingest import ingest_records
@@ -188,3 +188,12 @@ def test_post_batch_validates_its_body(client) -> None:
         == 422
     )
     assert client.post("/batches", json={"expected_count": 1, "records": []}).status_code == 422
+
+
+def test_health_reports_an_unreachable_database() -> None:
+    # Nothing listens on port 1; connecting fails at once.
+    dead = create_engine("postgresql+psycopg://dq:dq@127.0.0.1:1/none?connect_timeout=1")
+    with TestClient(create_app(dead)) as c:
+        response = c.get("/health")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "database unavailable"}

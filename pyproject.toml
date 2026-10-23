@@ -16,6 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest==8.3.5",
+    "pytest-cov==7.1.0",
     "ruff==0.11.8",
     "httpx==0.28.1",
 ]
@@ -35,6 +36,20 @@ filterwarnings = [
     # Raised inside starlette's TestClient by a newer anyio; nothing in this project uses it.
     "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
 ]
+
+[tool.coverage.run]
+source = ["app", "scripts"]
+branch = true
+# The CLI tests run `python -m app.ingest` and `python -m app.integrity` as subprocesses.
+patch = ["subprocess"]
+# A manual benchmark, not part of the product; run by hand, never by the tests.
+omit = ["scripts/bench_integrity.py"]
+
+[tool.coverage.report]
+show_missing = true
+# CI fails if coverage drops below this; it measured 99% when the floor was set.
+fail_under = 95
+skip_covered = false
 
 [tool.ruff]
 line-length = 100

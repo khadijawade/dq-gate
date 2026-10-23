@@ -71,7 +71,7 @@ with a local Postgres.
 ```bash
 docker compose up -d --wait
 python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e '.[dev]'
+pip install -r requirements-dev.lock && pip install -e . --no-deps
 
 alembic upgrade head
 python -m scripts.make_sample_data --seed 42 --out data/
@@ -85,6 +85,12 @@ python -m app.integrity
 uvicorn app.api:app          # http://127.0.0.1:8000/docs
 pytest
 ```
+
+Dependencies: `pyproject.toml` names the direct dependencies, each pinned to one version.
+`requirements.lock` and `requirements-dev.lock` pin everything they pull in as well, and CI installs
+only from those, so a new release upstream cannot change a build. To update, edit
+`pyproject.toml` and regenerate both with `uv pip compile` (the exact command is at the top of each
+lock file). The `--exclude-newer` date keeps out anything released in the two weeks before.
 
 `data/manifest.json` lists every sample file with its expected count and what should happen when
 it is loaded. The clean sample (`data/clean/`) passes every check.
@@ -199,7 +205,7 @@ printed `integrity ok: every event's org_ref matches an organization` and exited
 ```
 app/           api.py, models.py, ingest.py, fingerprint.py, validation.py, integrity.py, db.py
 migrations/    Alembic; 0001 creates the tables and partial unique index, 0002 adds batch counts
-scripts/       make_sample_data.py
+scripts/       make_sample_data.py, bench_integrity.py
 tests/         run against real Postgres
 .github/       ci.yml (lint and tests on push and pull request), integrity.yml (nightly)
 ```

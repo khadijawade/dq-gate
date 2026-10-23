@@ -30,7 +30,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e '.[dev]'
+          cache-dependency-path: requirements-dev.lock
+      - name: Install locked dependencies
+        run: |
+          pip install -r requirements-dev.lock
+          pip install -e . --no-deps
+          pip check
       - name: Lint
         run: |
           ruff check .

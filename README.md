@@ -53,7 +53,7 @@ the live-only unique index cannot serve it, and a plain index on `fingerprint` l
 obvious addition. Measured, it changes nothing: Postgres answers "every event with no matching
 organization" with one parallel hash anti-join that reads both tables once, and picks the same
 plan with or without the index. `python -m scripts.bench_integrity` (500,000 organizations,
-2,000,000 events, median of 5 runs) timed it at 244.4 ms with only the partial index and 244.0 ms
+2,000,000 events, median of 5 runs, run locally on 2026-10-23 on macOS) timed it at 244.4 ms with only the partial index and 244.0 ms
 with a plain one added. A plain index would only pay off for single-fingerprint lookups, which
 nothing here does, so it is not worth its cost on every insert.
 
@@ -127,40 +127,40 @@ malformed cursor is a 400.
 
 ## Results from real runs
 
-Every number in this section was produced by the command shown, run in this repository on
-2026-10-22 (macOS, Python 3.12.11, `postgres:16` from `docker-compose.yml`), starting from an
+Every number in this section was produced by the command shown. The test suite and nightly job
+results come from GitHub Actions runs, linked below. The ingest and API results were run locally
+on 2026-10-22 (macOS, Python 3.12.11, `postgres:16` from `docker-compose.yml`), starting from an
 empty database.
 
 ### Test suite
 
-`ruff check . && ruff format --check . && pytest`:
+From [CI run 39969204114](https://github.com/khadijawade/dq-gate/actions/runs/39969204114) on
+commit `22d05ca` (Ubuntu, Python 3.12.15, `postgres:16` service container, dependencies installed
+from `requirements-dev.lock`), which runs `ruff check .`, `ruff format --check .` and `pytest -v`:
 
 ```
 All checks passed!
-19 files already formatted
-============================= test session starts ==============================
-platform darwin -- Python 3.12.11, pytest-8.3.5, pluggy-1.7.0
-rootdir: /Users/khadijawade/Developer/GitHub/dq-gate
-configfile: pyproject.toml
-testpaths: tests
-plugins: anyio-4.15.1
-collected 100 items
-
-tests/test_api.py .......................                                [ 23%]
-tests/test_fingerprint.py ..................................             [ 57%]
-tests/test_ingest.py ................                                    [ 73%]
-tests/test_sample_data.py ........                                       [ 81%]
-tests/test_validation.py ...................                             [100%]
-
-============================= 100 passed in 4.14s ==============================
+22 files already formatted
+============================= 104 passed in 4.60s ==============================
 ```
+
+| Test file | Passed |
+|---|---|
+| `tests/test_api.py` | 24 |
+| `tests/test_fingerprint.py` | 34 |
+| `tests/test_ingest.py` | 16 |
+| `tests/test_migrations.py` | 2 |
+| `tests/test_sample_data.py` | 8 |
+| `tests/test_validation.py` | 20 |
+
+The CI badge at the top shows the latest run, which may be newer than this one.
 
 The tests run against real Postgres, not mocks. They cover fingerprint normalization edge cases;
 loading the same batch twice leaving the row count unchanged; short and incomplete batches being
 rejected with nothing stored, and good batches accepted; the partial unique index allowing a
 fingerprint back in after the old row is archived; the integrity check exiting 1 on the messy
-sample and 0 on the clean one; and walking every API page returning each row exactly once, in
-order, for page sizes from 1 to 500.
+sample and 0 on the clean one; walking every API page returning each row exactly once, in
+order, for page sizes from 1 to 500; and migrations downgrading and upgrading cleanly.
 
 ### Ingesting the messy sample
 
@@ -179,12 +179,14 @@ and exited 1.
 With the API running (`uvicorn app.api:app`), walking `GET /events?limit=100` by following
 `next_cursor` returned 312 events over 4 pages, and `GET /events?cursor=zzz` returned 400.
 
-### The nightly integrity job, replayed locally
+### The nightly integrity job
 
-The steps in `.github/workflows/integrity.yml`, run against a fresh empty database: migrations
-applied, `data/clean/organizations.csv` accepted with 50 inserted and 0 invalid,
-`data/clean/events.json` accepted with 120 inserted and 0 invalid, and `python -m app.integrity`
-printed `integrity ok: every event's org_ref matches an organization` and exited 0.
+[Run 39969237592](https://github.com/khadijawade/dq-gate/actions/runs/39969237592) of
+`.github/workflows/integrity.yml`, started by hand on commit `22d05ca`, against a fresh
+`postgres:16` service container: migrations applied, `data/clean/organizations.csv` accepted
+with 50 inserted, 0 skipped as duplicates and 0 invalid, `data/clean/events.json` accepted with
+120 inserted, 0 skipped and 0 invalid, and `python -m app.integrity` printed
+`integrity ok: every event's org_ref matches an organization` and exited 0.
 
 ## Limitations
 

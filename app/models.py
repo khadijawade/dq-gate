@@ -35,6 +35,10 @@ class Batch(Base):
     received_count: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Filled in when the load finishes; NULL only for batches loaded before migration 0002.
+    inserted_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duplicate_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    invalid_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

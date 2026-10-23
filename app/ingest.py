@@ -26,7 +26,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import Engine, insert, text
+from sqlalchemy import Engine, insert, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db import make_engine
@@ -196,6 +196,17 @@ def ingest_records(
                 stmt = pg_insert(Event).on_conflict_do_nothing(index_elements=["id"])
                 returning = Event.id
             inserted += len(conn.execute(stmt.returning(returning), chunk).all())
+
+        # Same transaction, so the counts can never disagree with the rows actually kept.
+        conn.execute(
+            update(Batch)
+            .where(Batch.id == batch_id)
+            .values(
+                inserted_count=inserted,
+                duplicate_count=len(valid) - inserted,
+                invalid_count=invalid,
+            )
+        )
 
     return IngestReport(
         batch_id=batch_id,

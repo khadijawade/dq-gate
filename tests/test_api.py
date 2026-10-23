@@ -106,6 +106,7 @@ def test_batches_are_listed_in_id_order(db, client) -> None:
     assert pages == 3
     assert items[-1]["status"] == "rejected"
     assert items[-1]["reason"].startswith("short batch")
+    assert [item["inserted_count"] for item in items] == [1, 1, 1, 1, 1, 0]
 
 
 def test_empty_table_has_no_next_cursor(client) -> None:

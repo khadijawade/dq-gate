@@ -40,6 +40,9 @@ class BatchOut(BaseModel):
     received_count: int
     status: str
     reason: str | None
+    inserted_count: int | None
+    duplicate_count: int | None
+    invalid_count: int | None
     created_at: datetime
 
 

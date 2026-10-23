@@ -38,12 +38,17 @@ def test_database_url() -> str:
 
 
 @pytest.fixture(scope="session")
-def engine(test_database_url: str) -> Engine:
-    _create_database_if_missing(test_database_url)
+def alembic_config(test_database_url: str) -> Config:
     cfg = Config(str(ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(ROOT / "migrations"))
     cfg.set_main_option("sqlalchemy.url", test_database_url)
-    command.upgrade(cfg, "head")
+    return cfg
+
+
+@pytest.fixture(scope="session")
+def engine(test_database_url: str, alembic_config: Config) -> Engine:
+    _create_database_if_missing(test_database_url)
+    command.upgrade(alembic_config, "head")
     eng = create_engine(test_database_url)
     yield eng
     eng.dispose()

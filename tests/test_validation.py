@@ -74,6 +74,8 @@ def test_short_batch_is_rejected_and_nothing_is_stored(db) -> None:
         76,
     )
     assert batch["reason"] == report.reason
+    # Nothing was kept, and the batch row says so.
+    assert (batch["inserted_count"], batch["duplicate_count"], batch["invalid_count"]) == (0, 0, 0)
 
 
 def test_incomplete_batch_is_rejected_and_nothing_is_stored(db) -> None:
@@ -89,6 +91,17 @@ def test_rejected_event_batch_stores_no_events(db) -> None:
     report = ingest_records(db, rows, source="events", expected_count=20)
     assert report.status == "rejected"
     assert count(db, "events") == 0
+
+
+def test_counts_are_stored_on_the_batch(db) -> None:
+    rows = orgs(40) + orgs(2) + [{"name": "Bad Country", "country": "Nowhere", "website": None}]
+    ingest_records(db, rows, source="counted", expected_count=43)
+    ingest_records(db, orgs(66, missing=6), source="rejected", expected_count=66)
+    with db.connect() as conn:
+        stored = conn.execute(
+            text("SELECT inserted_count, duplicate_count, invalid_count FROM batches ORDER BY id")
+        ).all()
+    assert [tuple(row) for row in stored] == [(40, 2, 1), (0, 0, 6)]
 
 
 def test_good_batch_is_accepted(db) -> None:

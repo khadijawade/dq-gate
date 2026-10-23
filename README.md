@@ -34,7 +34,7 @@ the primary key the same way.
 **Validate before keep.** A batch is judged as a whole before any row is stored. It is rejected
 if fewer than 95% of the rows the sender promised arrived (`received_count / expected_count <
 0.95`), or if more than 5% of the rows are missing a required field. A rejected batch is still
-recorded in `batches` with status `rejected` and a reason such as `short batch: received 76 of 100
+recorded in `batches` with status `rejected`, its counts and a reason such as `short batch: received 76 of 100
 expected (76.0%, minimum 95%)`, so the failure is visible and auditable, but none of its rows are
 kept. Partial loads are worse than no load: they look plausible. Rows that are present but
 malformed (an unreadable date, a country that is not a two-letter code) are skipped one by one and
@@ -102,7 +102,7 @@ or `YYYY` and sets `date_precision` to `day`, `month` or `year`.
 | Endpoint | |
 |---|---|
 | `GET /health` | `{"status": "ok"}`, or 503 if the database is unreachable. |
-| `GET /batches?limit&cursor` | Every batch, accepted and rejected, in id order. |
+| `GET /batches?limit&cursor` | Every batch, accepted and rejected, in id order, with its `inserted_count`, `duplicate_count` and `invalid_count`. |
 | `POST /batches` | `{"source", "expected_count", "kind"?, "records": [...]}`. Same logic as the CLI. 201 with the report if accepted, 422 with the report if rejected. |
 | `GET /organizations?limit&cursor&include_archived` | Live organizations; `include_archived=true` adds archived ones. |
 | `GET /events?limit&cursor` | All events. |
@@ -189,7 +189,7 @@ printed `integrity ok: every event's org_ref matches an organization` and exited
 
 ```
 app/           api.py, models.py, ingest.py, fingerprint.py, validation.py, integrity.py, db.py
-migrations/    Alembic; 0001 creates all three tables and the partial unique index
+migrations/    Alembic; 0001 creates the tables and partial unique index, 0002 adds batch counts
 scripts/       make_sample_data.py
 tests/         run against real Postgres
 .github/       ci.yml (lint and tests on push and pull request), integrity.yml (nightly)

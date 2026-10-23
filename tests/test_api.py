@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.api import create_app, encode_cursor
+from app.api import MAX_BATCH_RECORDS, BatchIn, create_app, encode_cursor
 from app.ingest import ingest_records
 from tests.conftest import count
 
@@ -166,6 +166,18 @@ def test_post_batch_takes_events_and_numbers(db, client) -> None:
     assert response.status_code == 201
     assert response.json()["kind"] == "events"
     assert client.get("/events").json()["items"][0]["starts_on"] == "2019-01-01"
+
+
+def test_post_batch_has_a_record_limit(db, client) -> None:
+    record = {"name": "Same Org", "country": "GB", "website": None}
+    # The limit itself is allowed (checked on the model, to avoid loading 10,000 rows).
+    BatchIn(source="x", expected_count=1, records=[record] * MAX_BATCH_RECORDS)
+
+    body = {"source": "big", "expected_count": 1, "records": [record] * (MAX_BATCH_RECORDS + 1)}
+    response = client.post("/batches", json=body)
+    assert response.status_code == 422
+    assert "at most 10000 items" in response.text
+    assert count(db, "batches") == 0  # refused before anything is recorded
 
 
 def test_post_batch_validates_its_body(client) -> None:

@@ -118,7 +118,7 @@ or `YYYY` and sets `date_precision` to `day`, `month` or `year`.
 |---|---|
 | `GET /health` | `{"status": "ok"}`, or 503 if the database is unreachable. |
 | `GET /batches?limit&cursor` | Every batch, accepted and rejected, in id order, with its `inserted_count`, `duplicate_count` and `invalid_count`. |
-| `POST /batches` | `{"source", "expected_count", "kind"?, "records": [...]}`. Same logic as the CLI. 201 with the report if accepted, 422 with the report if rejected. |
+| `POST /batches` | `{"source", "expected_count", "kind"?, "records": [...]}`, at most 10,000 records (use the CLI for bigger loads). Same logic as the CLI. 201 with the report if accepted, 422 with the report if rejected. |
 | `GET /organizations?limit&cursor&include_archived` | Live organizations; `include_archived=true` adds archived ones. |
 | `GET /events?limit&cursor` | All events. |
 

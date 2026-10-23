@@ -28,6 +28,8 @@ from app.models import Batch, Event, Organization
 
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 500
+# One POST is validated and loaded in memory and in one transaction; bigger loads use the CLI.
+MAX_BATCH_RECORDS = 10_000
 
 
 # --- schemas -------------------------------------------------------------------------------
@@ -76,7 +78,7 @@ class BatchIn(BaseModel):
     source: str = Field(min_length=1)
     expected_count: int = Field(ge=1)
     kind: Literal["organizations", "events"] | None = None
-    records: list[dict[str, str | int | float | None]]
+    records: list[dict[str, str | int | float | None]] = Field(max_length=MAX_BATCH_RECORDS)
 
 
 class IngestOut(BaseModel):
